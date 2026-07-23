@@ -1,0 +1,9 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+postinstall-commands:
+  - husky install
+
+overrides:
+  typescript: ^5.3.0

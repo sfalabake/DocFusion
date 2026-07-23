@@ -1,0 +1,58 @@
+{
+  "name": "docfusion",
+  "version": "1.0.0",
+  "description": "PDFLeader Pro - Production-ready PDF editing SaaS platform",
+  "private": true,
+  "packageManager": "pnpm@8.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "test:watch": "pnpm -r run test:watch",
+    "test:coverage": "pnpm -r run test:coverage",
+    "test:e2e": "pnpm -F @docfusion/frontend run test:e2e",
+    "lint": "pnpm -r run lint",
+    "lint:fix": "pnpm -r run lint:fix",
+    "format": "pnpm -r run format",
+    "format:check": "pnpm -r run format:check",
+    "type-check": "pnpm -r run type-check",
+    "type-check:watch": "pnpm -r run type-check:watch",
+    "clean": "pnpm -r run clean && pnpm -r exec rm -rf dist node_modules .next .turbo",
+    "db:migrate": "pnpm -F @docfusion/backend run db:migrate",
+    "db:migrate:dev": "pnpm -F @docfusion/backend run db:migrate:dev",
+    "db:seed": "pnpm -F @docfusion/backend run db:seed",
+    "db:studio": "pnpm -F @docfusion/backend run db:studio",
+    "db:reset": "pnpm -F @docfusion/backend run db:reset",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:build": "docker-compose build",
+    "prepare": "husky install",
+    "preinstall": "npx only-allow pnpm"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.0.2",
+    "prettier": "^3.0.0",
+    "typescript": "^5.3.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}

@@ -1,0 +1,267 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  password      String
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  role          String     @default("USER")
+  status        String     @default("ACTIVE")
+  isEmailVerified Boolean   @default(false)
+  emailVerificationToken String?
+  emailVerificationTokenExpiry DateTime?
+  passwordResetToken String?
+  passwordResetTokenExpiry DateTime?
+  lastLoginAt   DateTime?
+  loginAttempts Int        @default(0)
+  accountLockedUntil DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  files         File[]
+  subscriptions Subscription[]
+  apiKeys       APIKey[]
+  comments      Comment[]
+  collaborations Collaboration[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model File {
+  id            String     @id @default(cuid())
+  fileName      String
+  fileSize      Int
+  mimeType      String
+  originalName  String
+  fileExtension String
+  fileHash      String     @unique
+  storageUrl    String
+  status        String     @default("ACTIVE")
+  pageCount     Int?
+  metadata      Json?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  // Foreign keys
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relations
+  edits         Edit[]
+  comments      Comment[]
+  collaborations Collaboration[]
+  versions      FileVersion[]
+  annotations   Annotation[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model FileVersion {
+  id            String     @id @default(cuid())
+  versionNumber Int
+  fileSize      Int
+  storageUrl    String
+  changesSummary String?
+  createdAt     DateTime   @default(now())
+  createdBy     String
+
+  // Foreign keys
+  fileId        String
+  file          File       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId])
+  @@unique([fileId, versionNumber])
+}
+
+model Edit {
+  id            String     @id @default(cuid())
+  operationType String     // "add", "remove", "modify", "merge", "split", "rotate", etc.
+  pageNumber    Int?
+  coordinates   Json?      // {x, y, width, height}
+  oldValue      Json?
+  newValue      Json?
+  description   String?
+  createdAt     DateTime   @default(now())
+
+  // Foreign keys
+  fileId        String
+  file          File       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@index([fileId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Comment {
+  id            String     @id @default(cuid())
+  content       String
+  pageNumber    Int?
+  coordinates   Json?
+  status        String     @default("ACTIVE")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  resolvedAt    DateTime?
+
+  // Foreign keys
+  fileId        String
+  file          File       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  parentId      String?
+  parent        Comment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Comment[]  @relation("CommentReplies")
+
+  @@index([fileId])
+  @@index([userId])
+}
+
+model Annotation {
+  id            String     @id @default(cuid())
+  type          String     // "highlight", "underline", "strikethrough", "note", "draw"
+  pageNumber    Int
+  content       String?
+  coordinates   Json       // {x, y, width, height, rotation}
+  color         String?
+  opacity       Float?     @default(1.0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Foreign keys
+  fileId        String
+  file          File       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@index([fileId])
+  @@index([userId])
+}
+
+model Collaboration {
+  id            String     @id @default(cuid())
+  role          String     @default("VIEWER") // "VIEWER", "EDITOR", "OWNER"
+  status        String     @default("PENDING") // "PENDING", "ACCEPTED", "REJECTED"
+  invitedEmail  String?
+  shareLink     String?    @unique
+  expiresAt     DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Foreign keys
+  fileId        String
+  file          File       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@index([fileId])
+  @@index([userId])
+  @@index([shareLink])
+}
+
+model Subscription {
+  id            String     @id @default(cuid())
+  planType      String     // "FREE", "PRO", "ENTERPRISE"
+  status        String     @default("ACTIVE")
+  storageLimit  Int        // in MB
+  filesLimit    Int
+  startDate     DateTime   @default(now())
+  endDate       DateTime?
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Foreign keys
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([planType])
+}
+
+model APIKey {
+  id            String     @id @default(cuid())
+  key           String     @unique
+  name          String
+  status        String     @default("ACTIVE")
+  lastUsedAt    DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Foreign keys
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([key])
+}
+
+model Notification {
+  id            String     @id @default(cuid())
+  type          String     // "file_shared", "comment", "collaboration_request", etc.
+  title         String
+  message       String
+  relatedId     String?    // file ID, comment ID, etc.
+  isRead        Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  readAt        DateTime?
+
+  // Foreign keys
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id            String     @id @default(cuid())
+  action        String
+  resource      String
+  resourceId    String
+  changes       Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime   @default(now())
+
+  // Foreign keys
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Session {
+  id            String     @id @default(cuid())
+  sessionToken  String     @unique
+  userId        String
+  expires       DateTime
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([sessionToken])
+}
