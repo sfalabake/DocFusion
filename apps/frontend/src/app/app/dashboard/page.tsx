@@ -1,6 +1,7 @@
 'use client';
 
 import { useFiles, useUploadFile } from '@/hooks/useApi';
+import { getApiClient } from '@/lib/apiClient';
 import { Button, Card, CardBody, CardHeader, Spinner } from '@/components/ui';
 import Link from 'next/link';
 
@@ -11,7 +12,19 @@ export default function DashboardPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      uploadMutation.mutate(file);
+      // Use presigned flow: request presign then upload directly
+      (async () => {
+        try {
+          const presign = await import('@/lib/storage').then((m) => m.getPresign(file.name, file.type));
+          await import('@/lib/storage').then((m) => m.directUpload(presign.uploadUrl, file, presign.headers));
+          // After upload, tell backend to register the uploaded file
+          await getApiClient().post('/files/register', { fileKey: presign.fileKey, fileName: file.name, fileSize: file.size, mimeType: file.type });
+          // refresh
+          uploadMutation.mutate(file);
+        } catch (err) {
+          console.error('Upload failed', err);
+        }
+      })();
     }
   };
 

@@ -43,7 +43,39 @@ export class FilesService {
       },
     });
 
-    // TODO: Upload actual file to MinIO/S3
+    // Placeholder: store file buffer to a local uploads folder during development
+    // Create uploads directory if not exists (development only)
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const uploadsDir = path.resolve(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+      const filePath = path.join(uploadsDir, hash + '.' + (file.originalname.split('.').pop() || 'bin'));
+      fs.writeFileSync(filePath, file.buffer);
+      // For production, replace with S3/R2 upload and set proper storageUrl
+      await this.prisma.file.update({ where: { id: savedFile.id }, data: { storageUrl: `/uploads/${hash}` } });
+    } catch (err) {
+      // ignore for now
+      console.warn('Local upload fallback failed', err);
+    }
+
+    return savedFile;
+  }
+
+  async registerExternalUpload(userId: string, data: { fileName: string; fileSize: number; mimeType: string; fileKey: string }) {
+    const { fileName, fileSize, mimeType, fileKey } = data;
+    const savedFile = await this.prisma.file.create({
+      data: {
+        fileName,
+        fileSize,
+        mimeType,
+        originalName: fileName,
+        fileExtension: fileName.split('.').pop() || '',
+        fileHash: fileKey,
+        storageUrl: `/uploads/${fileKey}`,
+        userId,
+      },
+    });
 
     return savedFile;
   }

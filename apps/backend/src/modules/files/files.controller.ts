@@ -31,6 +31,22 @@ export class FilesController {
     return this.filesService.uploadFile(req.user.id, file);
   }
 
+  // After client uploads to S3/R2 using presigned URL, register the file metadata
+  @Post('register')
+  async registerFile(@Request() req: any, @Body() body: { fileKey: string; fileName: string; fileSize: number; mimeType: string }) {
+    // For dev placeholder, treat fileKey as local path
+    const hash = body.fileKey || `${Date.now()}_${body.fileName}`;
+
+    const savedFile = await this.filesService.registerExternalUpload(req.user.id, {
+      fileName: body.fileName,
+      fileSize: body.fileSize,
+      mimeType: body.mimeType,
+      fileKey: hash,
+    });
+
+    return savedFile;
+  }
+
   @Get()
   async getFiles(
     @Request() req: any,
